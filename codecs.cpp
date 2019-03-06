@@ -40,7 +40,16 @@
 #include "codecs.h"
 
 #include "common/assembly.h"
-#include "SD.h"
+
+#ifdef USE_SdFat_
+#include <SdFat.h>
+//SdFatSdioEX SD; // SdFatSdioEX uses extended multi-block transfers without DMA.
+extern SdFatSdio SD; // SdFatSdio uses a traditional DMA SDIO implementation.
+// Note the difference is speed and busy yield time.
+// Teensy 3.5 & 3.6 SDIO: 4 to 5 times the throughput using the 4-bit SDIO mode compared to the 1-bit SPI mode
+#else
+#include <SD.h>
+#endif
 
 void CodecFile::serflashinit(void)
 {
