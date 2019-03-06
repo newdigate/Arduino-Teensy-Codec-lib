@@ -46,7 +46,21 @@
 #include <Arduino.h>
 #include <AudioStream.h>
 #include <spi_interrupt.h>
+
+#define USE_SdFat_
+
+#include <AudioStream.h>
+#include <spi_interrupt.h>
+
+#ifdef USE_SdFat_
+#include <SdFat.h>
+// SdFatSdioEX SD; // SdFatSdioEX uses extended multi-block transfers without DMA.
+extern SdFatSdio SD; // SdFatSdio uses a traditional DMA SDIO implementation.
+// Note the difference is speed and busy yield time.
+// Teensy 3.5 & 3.6 SDIO: 4 to 5 times the throughput using the 4-bit SDIO mode compared to the 1-bit SPI mode
+#else
 #include <SD.h>
+#endif
 
 #define ERR_CODEC_NONE				0
 #define ERR_CODEC_FILE_NOT_FOUND    1
@@ -84,7 +98,26 @@ class CodecFile
 {
 public:
 
-	bool fopen(const char *filename) {ftype=codec_file; AudioStartUsingSPI(); fptr=NULL; file=SD.open(filename); _fsize=file.size(); _fposition=0; return file != 0;} //FILE
+	bool fopen(const char *filename)
+	{
+		ftype=codec_file;
+		AudioStartUsingSPI();
+		fptr=NULL;
+#ifdef USE_SdFat_
+		file.open(filename); // SdFat.h
+#else
+		file=SD.open(filename);// SD.h
+#endif
+
+		_fsize=file.size();
+		_fposition=0;
+
+#ifdef USE_SdFat_
+		return file;
+#else
+		return file != 0;
+#endif
+	} //FILE
 	bool fopen(const uint8_t*p, const size_t size) {ftype=codec_flash; fptr=(uint8_t*)p; _fsize=size; _fposition=0; return true;} //FLASH
 	bool fopen(const size_t p, const size_t size) {ftype=codec_serflash; offset=p; _fsize=size; _fposition=0; AudioStartUsingSPI(); serflashinit(); return true;} //SERIAL FLASH
 	void fclose(void)
